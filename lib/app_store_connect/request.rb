@@ -23,21 +23,6 @@ module AppStoreConnect
 
     private
 
-    def web_service_endpoint
-      @options.fetch(:web_service_endpoint)
-    end
-
-    def query
-      return unless http_method == :get
-
-      names = url_parameter_names(web_service_endpoint)
-
-      kwargs
-        .reject { |n| names.include?(n) }
-        .deep_transform_keys { |k| k.to_s.camelize(:lower) }
-        .to_query
-    end
-
     def http_method
       @options.fetch(:http_method).to_sym
     end
@@ -51,9 +36,7 @@ module AppStoreConnect
     end
 
     def uri
-      @options.fetch(:uri).tap do |uri|
-        uri.query = query if http_method == :get
-      end
+      @options.fetch(:uri)
     end
 
     def headers
@@ -66,12 +49,12 @@ module AppStoreConnect
       @options.fetch(:http_body)
     end
 
-    def url_parameter_names(web_service_endpoint)
-      web_service_endpoint
-        .url
-        .scan(/(\{(\w+)\})/)
-        .map { |_, n| n.to_sym }
-    end
+    # def url_parameter_names(web_service_endpoint)
+      # web_service_endpoint
+        # .url
+        # .scan(/(\{(\w+)\})/)
+        # .map { |_, n| n.to_sym }
+    # end
 
     def net_http_request_class
       case http_method

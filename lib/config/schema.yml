@@ -1,0 +1,93 @@
+---
+openapi: 3.0.0
+info:
+  title: App Store Connect
+  version: 1
+servers:
+  - url: https://api.appstoreconnect.apple.com/v1
+paths:
+  /apps:
+    get:
+      operationId: apps
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppsResponse'
+  /devices:
+    get:
+      operationId: devices
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            maximum: 200
+      responses:
+        200:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DevicesResponse'
+
+components:
+  schemas:
+    App.Attributes:
+      type: object
+      properties:
+        bundleId: 
+          type: string
+    App:
+      type: object
+      properties:
+        id: 
+          type: string
+        attributes:
+          type: object
+          $ref: '#/components/schemas/App.Attributes'
+    AppsResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          $ref: '#/components/schemas/App'
+    BundleIdPlatform:
+      type: string
+      enum:
+        - IOS
+        - MAC_OS
+    Device.Attributes:
+      type: object
+      properties:
+        deviceClass:
+          type: string
+          enum:
+            - APPLE_WATCH
+            - IPAD
+            - IPHONE
+            - IPOD
+            - APPLE_TV
+            - MAC
+        model:
+          type: string
+        name:
+          type: string
+        platform:
+          type: object
+          $ref: '#/components/schemas/BundleIdPlatform'
+    Device:
+      type: object
+      properties:
+        attributes:
+          type: object
+          $ref: '#/components/schemas/Device.Attributes'
+    DevicesResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Device'
+        links: {} # TODO
+        meta: {} # TODO

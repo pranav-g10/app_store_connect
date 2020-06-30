@@ -20,15 +20,15 @@ module AppStoreConnect
     end
 
     def respond_to_missing?(method_name, include_private = false)
-      web_service_endpoint_aliases.include?(method_name) || super
+      endpoint_by(operation_id: method_name.to_s) || super
     end
 
     def method_missing(method_name, *kwargs)
-      super unless web_service_endpoint_aliases.include?(method_name)
+      endpoint = endpoint_by(operation_id: method_name.to_s)
 
-      web_service_endpoint = web_service_endpoint_by(method_name)
+      super if endpoint.nil?
 
-      call(web_service_endpoint, *kwargs)
+      call(endpoint, *kwargs)
     end
 
     # :nocov:
@@ -37,16 +37,14 @@ module AppStoreConnect
     end
     # :nocov:
 
-    def web_service_endpoint_aliases
-      @registry.keys
-    end
-
     private
 
-    def call(web_service_endpoint, **kwargs)
-      raise "invalid http method: #{web_service_endpoint.http_method}" unless %i[get delete post].include?(web_service_endpoint.http_method)
+    def endpoint_by(operation_id:)
+      @options[:schema].endpoint_by(operation_id: operation_id)
+    end
 
-      request = build_request(web_service_endpoint, **kwargs)
+    def call(endpoint, **kwargs)
+      request = build_request(endpoint, **kwargs)
 
       @usage.track
       response = request.execute
@@ -54,33 +52,47 @@ module AppStoreConnect
       Utils.decode(response.body, response.content_type) if response.body
     end
 
-    def build_uri(web_service_endpoint, **kwargs)
-      URI(web_service_endpoint
-        .url
-        .gsub(/(\{(\w+)\})/) { kwargs.fetch(Regexp.last_match(2).to_sym) })
+    def server_url
+      @options[:schema].url
+    end 
+
+    def build_uri(endpoint, kwargs)
+      without_query = String.new("#{server_url}#{endpoint.path.path}")
+        .gsub(/(\{(\w+)\})/) { kwargs.fetch(Regexp.last_match(2).to_sym) }
+
+      URI(without_query).tap do |uri|
+        uri.query = build_query(endpoint, kwargs)
+      end
     end
+    
+    def build_query(endpoint, kwargs)
+      kwargs
+        .deep_transform_keys(&:to_s)
+        .slice(*endpoint.query_parameters.map(&:name))
+        .to_query
+    end 
 
     def web_service_endpoint_by(alias_sym)
       @registry[alias_sym]
     end
 
-    def http_body(web_service_endpoint, **kwargs)
-      Utils.encode("AppStoreConnect::#{web_service_endpoint.http_body_type}"
-        .constantize
-        .new(**kwargs)
-        .to_h)
+    def build_request_body(endpoint, **kwargs)
+      {}
+      # Utils.encode("AppStoreConnect::#{web_service_endpoint.http_body_type}"
+        # .constantize
+        # .new(**kwargs)
+        # .to_h)
     end
 
-    def build_request(web_service_endpoint, **kwargs)
+    def build_request(endpoint, **kwargs)
       options = {
         kwargs: kwargs,
-        web_service_endpoint: web_service_endpoint,
-        http_method: web_service_endpoint.http_method,
-        uri: build_uri(web_service_endpoint, **kwargs),
+        http_method: endpoint.method.to_sym,
+        uri: build_uri(endpoint, **kwargs),
         headers: headers
       }
 
-      options[:http_body] = http_body(web_service_endpoint, **kwargs) if web_service_endpoint.http_method == :post
+      options[:http_body] = build_request_body(endpoint, *kwargs) if endpoint.method.to_sym == :post
 
       Request.new(options)
     end
