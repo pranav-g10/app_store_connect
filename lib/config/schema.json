@@ -469,6 +469,11 @@
 		},
 		{
 		"http_method": "get",
+		"url": "https://api.appstoreconnect.apple.com/v1/builds/{id}/appStoreVersion",
+		"alias": "build_app_store_version"
+		},
+		{
+		"http_method": "get",
 		"url": "https://api.appstoreconnect.apple.com/v1/builds/{id}/preReleaseVersion",
 		"alias": "build_pre_release_version"
 		},
